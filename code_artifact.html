@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบควบคุมวัสดุ - เทศบาลตำบลแม่พริก</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Google Font Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        gov: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; color: #334155; }
+        .tab-btn.active { background-color: #15803d; color: white; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; font-size: 12pt; }
+            .card-box { border: none !important; shadow: none !important; padding: 0 !important; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header Section -->
+    <header class="bg-white border-b border-gray-200 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center border-2 border-emerald-600 flex-shrink-0">
+                        <i class="fa-solid fa-box-archive text-3xl text-emerald-700"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs sm:text-sm text-gray-500 font-medium">งานธุรการ · กองสาธารณสุขและสิ่งแวดล้อม · เทศบาลตำบลแม่พริก</p>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight">ระบบควบคุมวัสดุ</h1>
+                        <p class="text-xs text-gray-500 mt-1">
+                            พัฒนาโดย นายอัษฎาวุธ รัตนกุล · 0956758916 · slayergt01@gmail.com · <span class="text-rose-500">❤️ สนับสนุน</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between md:justify-end gap-3">
+                    <div class="border-2 border-dashed border-amber-500 text-amber-800 bg-amber-50 px-4 py-1.5 rounded-lg text-sm font-semibold tracking-wide">
+                        ปีงบประมาณ <span id="currentFiscalYear">2570</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex flex-wrap gap-2 mt-6 border-b border-gray-200 pb-2">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie"></i> วัสดุคงคลัง
+                </button>
+                <button onclick="switchTab('receive')" id="tab-receive" class="tab-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-file-circle-plus"></i> รับเข้า
+                </button>
+                <button onclick="switchTab('issue')" id="tab-issue" class="tab-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-file-arrow-up"></i> ใบเบิกวัสดุ
+                </button>
+                <button onclick="switchTab('registry')" id="tab-registry" class="tab-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> ทะเบียนวัสดุ
+                </button>
+                <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i> รายงาน
+                </button>
+                <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders"></i> ตั้งค่า / สำรองข้อมูล
+                </button>
+                <button onclick="showDonateModal()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-medium transition duration-150 flex items-center gap-2 ml-auto">
+                    <i class="fa-solid fa-heart"></i> สนับสนุน
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full no-print">
+
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <section id="sec-dashboard" class="space-y-6">
+            <!-- Stats Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gov-800 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
+                    <p class="text-sm font-medium text-emerald-100">มูลค่าวัสดุคงเหลือ</p>
+                    <h3 class="text-3xl font-bold mt-2" id="dashTotalValue">0.00 <span class="text-lg font-normal">บาท</span></h3>
+                    <p class="text-xs text-emerald-200 mt-2">วัสดุในทะเบียน <span id="dashTotalItems">0</span> รายการ</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                    <p class="text-sm font-medium text-gray-500">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-sky-500 mr-1.5"></span>รับเข้า ปีงบนี้
+                    </p>
+                    <h3 class="text-3xl font-bold mt-2 text-gray-800" id="dashReceiveValue">0.00 <span class="text-lg font-normal text-gray-500">บาท</span></h3>
+                    <p class="text-xs text-gray-400 mt-2"><span id="dashReceiveCount">0</span> ใบรับ (ไม่รวมยอดยกมา)</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                    <p class="text-sm font-medium text-gray-500">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 mr-1.5"></span>เบิกจ่าย ปีงบนี้
+                    </p>
+                    <h3 class="text-3xl font-bold mt-2 text-gray-800" id="dashIssueValue">0.00 <span class="text-lg font-normal text-gray-500">บาท</span></h3>
+                    <p class="text-xs text-gray-400 mt-2"><span id="dashIssueCount">0</span> ใบเบิก</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                    <p class="text-sm font-medium text-gray-500">วัสดุหมดคลัง</p>
+                    <h3 class="text-3xl font-bold mt-2 text-rose-600" id="dashOutOfStockCount">0 <span class="text-lg font-normal text-gray-500">รายการ</span></h3>
+                    <p class="text-xs text-gray-400 mt-2">ทุกรายการที่มีของในคลัง</p>
+                </div>
+            </div>
+
+            <!-- Chart & Top Stock Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Bar Chart -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-lg font-semibold text-gray-800">มูลค่ารับเข้า-เบิกจ่ายรายเดือน ปีงบ 2570</h4>
+                        <div class="flex items-center gap-4 text-xs">
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-sky-500 rounded-sm"></span> รับเข้า</span>
+                            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-amber-500 rounded-sm"></span> เบิกจ่าย</span>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Material Value -->
+                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">มูลค่าคงเหลือสูงสุด</h4>
+                    <div id="topStockList" class="flex-grow space-y-3 overflow-y-auto max-h-64 text-sm">
+                        <!-- Dynamic List -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: RECEIVE ================= -->
+        <section id="sec-receive" class="hidden space-y-6">
+            <!-- Receive Form Box -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h3 class="text-xl font-bold text-gov-800 flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-packing"></i> บันทึกรับวัสดุเข้าคลัง
+                    </h3>
+                    <span class="text-xs text-gray-400">ราคาต่อหน่วยใช้คิดมูลค่าในบัญชีวัสดุ</span>
+                </div>
+
+                <form id="receiveForm" onsubmit="handleSaveReceive(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เลขที่ใบรับ</label>
+                            <input type="text" id="recDocNo" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="001/2570">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่รับ *</label>
+                            <input type="date" id="recDate" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ที่มา</label>
+                            <select id="recSource" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                <option value="จัดซื้อ/จัดจ้าง">จัดซื้อ/จัดจ้าง</option>
+                                <option value="ยอดยกมา">ยอดยกมา</option>
+                                <option value="รับบริจาค/โอนมา">รับบริจาค/โอนมา</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่ตรวจรับ *</label>
+                            <input type="date" id="recInspectDate" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เลขที่ใบสั่งซื้อ/สัญญา</label>
+                            <input type="text" id="recPoNo" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เช่น 45/2570">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ผู้ขาย / รับจาก *</label>
+                            <input type="text" id="recVendor" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="ชื่อร้านค้า / หน่วยงาน">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เลขที่ใบส่งของ/ใบกำกับ</label>
+                            <input type="text" id="recInvoiceNo" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="INV-XXXX">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                        <input type="text" id="recNote" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เช่น โครงการซ่อมแซมถนนในตำบล">
+                    </div>
+
+                    <!-- Dynamic Material Table -->
+                    <div class="pt-4 border-t mt-4">
+                        <h4 class="font-semibold text-gray-800 mb-3">รายการวัสดุที่รับ</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b text-gray-600">
+                                        <th class="p-2.5">วัสดุ</th>
+                                        <th class="p-2.5 w-32">จำนวน</th>
+                                        <th class="p-2.5 w-36">ราคา/หน่วย (บาท)</th>
+                                        <th class="p-2.5 w-36 text-right">รวมเงิน</th>
+                                        <th class="p-2.5 w-16 text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="receiveItemsTableBody">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-3">
+                            <button type="button" onclick="addReceiveRow()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1">
+                                <i class="fa-solid fa-plus text-xs"></i> เพิ่มรายการ
+                            </button>
+                            <div class="text-right">
+                                <span class="text-gray-600">รวมทั้งสิ้น: </span>
+                                <span id="receiveTotalAmount" class="text-xl font-bold text-gov-800">0.00</span>
+                                <span class="text-gray-600"> บาท</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t">
+                        <button type="button" onclick="resetReceiveForm()" class="px-5 py-2 border rounded-xl hover:bg-gray-50 text-gray-700 font-medium text-sm">ล้างฟอร์ม</button>
+                        <button type="submit" class="px-6 py-2 bg-gov-700 hover:bg-gov-800 text-white rounded-xl font-medium text-sm shadow-md">บันทึกรับเข้า</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Receive Registry Table -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">ทะเบียนใบรับวัสดุ</h3>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="searchReceive" onkeyup="renderReceiveTable()" placeholder="ค้นหา เลขที่ ผู้ขาย..." class="border rounded-lg px-3 py-1.5 text-sm outline-none">
+                        <select id="filterRecYear" onchange="renderReceiveTable()" class="border rounded-lg px-3 py-1.5 text-sm outline-none">
+                            <option value="2570">ปีงบ 2570</option>
+                            <option value="2569">ปีงบ 2569</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 border-b">
+                                <th class="p-3">เลขที่</th>
+                                <th class="p-3">วันที่รับ</th>
+                                <th class="p-3">ที่มา / ผู้ขาย</th>
+                                <th class="p-3">ใบสั่งซื้อ</th>
+                                <th class="p-3">รายการ</th>
+                                <th class="p-3 text-right">มูลค่า (บาท)</th>
+                                <th class="p-3 text-center">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="receiveRegistryBody">
+                            <!-- Items inserted dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: ISSUE ================= -->
+        <section id="sec-issue" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h3 class="text-xl font-bold text-gov-800 flex items-center gap-2">
+                        <i class="fa-solid fa-file-invoice"></i> ออกใบเบิกวัสดุ
+                    </h3>
+                    <span class="text-xs text-gray-400">บันทึกแล้วตัดยอดคงเหลือทันที และพิมพ์ใบเบิกได้จากปุ่ม "พิมพ์"</span>
+                </div>
+
+                <form id="issueForm" onsubmit="handleSaveIssue(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เลขที่ใบเบิก</label>
+                            <input type="text" id="issDocNo" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="001/2570">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่เบิก *</label>
+                            <input type="date" id="issDate" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ผู้เบิก *</label>
+                            <input type="text" id="issUser" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="ชื่อ-สกุล">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ตำแหน่ง</label>
+                            <input type="text" id="issPosition" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="นักจัดการงานทั่วไป / นายช่าง">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">เพื่อใช้ในงาน *</label>
+                            <input type="text" id="issPurpose" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เช่น ซ่อมแซมถนนลาดยาง หมู่ 3 ตามคำร้องเลขรับ 012/2570">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                        <input type="text" id="issNote" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="หมายเหตุเพิ่มเติม">
+                    </div>
+
+                    <!-- Dynamic Issue Items -->
+                    <div class="pt-4 border-t mt-4">
+                        <h4 class="font-semibold text-gray-800 mb-3">รายการวัสดุที่เบิก</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-gray-50 border-b text-gray-600">
+                                        <th class="p-2.5">วัสดุ</th>
+                                        <th class="p-2.5 w-32">จำนวนเบิก</th>
+                                        <th class="p-2.5 w-36">คงเหลือในคลัง</th>
+                                        <th class="p-2.5 w-16 text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="issueItemsTableBody">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" onclick="addIssueRow()" class="mt-3 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i> เพิ่มรายการ
+                        </button>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t">
+                        <button type="button" onclick="resetIssueForm()" class="px-5 py-2 border rounded-xl hover:bg-gray-50 text-gray-700 font-medium text-sm">ล้างฟอร์ม</button>
+                        <button type="submit" name="action" value="save" class="px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-medium text-sm">บันทึก</button>
+                        <button type="submit" name="action" value="saveAndPrint" class="px-6 py-2 bg-gov-700 hover:bg-gov-800 text-white rounded-xl font-medium text-sm shadow-md flex items-center gap-2">
+                            <i class="fa-solid fa-print"></i> บันทึกและพิมพ์ใบเบิก
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Issue Registry Table -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">ทะเบียนใบเบิกวัสดุ</h3>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="searchIssue" onkeyup="renderIssueTable()" placeholder="ค้นหา เลขที่ ผู้เบิก..." class="border rounded-lg px-3 py-1.5 text-sm outline-none">
+                        <select id="filterIssYear" onchange="renderIssueTable()" class="border rounded-lg px-3 py-1.5 text-sm outline-none">
+                            <option value="2570">ปีงบ 2570</option>
+                            <option value="2569">ปีงบ 2569</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 border-b">
+                                <th class="p-3">เลขที่</th>
+                                <th class="p-3">วันที่</th>
+                                <th class="p-3">ผู้เบิก</th>
+                                <th class="p-3">เพื่อใช้ในงาน</th>
+                                <th class="p-3">รายการ</th>
+                                <th class="p-3 text-right">มูลค่า (บาท)</th>
+                                <th class="p-3 text-center">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="issueRegistryBody">
+                            <!-- Items inserted dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 4: REGISTRY ================= -->
+        <section id="sec-registry" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <h3 class="text-xl font-bold text-gov-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-folder-plus"></i> เพิ่มวัสดุเข้าทะเบียน
+                </h3>
+                <form id="materialForm" onsubmit="handleSaveMaterial(event)" class="space-y-4">
+                    <input type="hidden" id="matId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อวัสดุ *</label>
+                            <input type="text" id="matName" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เช่น ยางมะตอยสำเร็จรูป (ถุง 20 กก.)">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ประเภทวัสดุ</label>
+                            <input type="text" id="matCategory" list="catList" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="เลือกจากรายการ หรือพิมพ์เอง">
+                            <datalist id="catList">
+                                <option value="วัสดุก่อสร้าง">
+                                <option value="วัสดุสำนักงาน">
+                                <option value="วัสดุการเกษตร/สาธารณสุข">
+                                <option value="วัสดุยานพาหนะ">
+                                <option value="วัสดุไฟฟ้าและวิทยุ">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">หน่วยนับ *</label>
+                            <input type="text" id="matUnit" required class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="ถุง / กล่อง / อัน / ชิ้น">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ / ขนาด / ยี่ห้อ</label>
+                            <input type="text" id="matSpec" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="รายละเอียดเฉพาะ">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button type="button" onclick="resetMaterialForm()" class="px-5 py-2 border rounded-xl hover:bg-gray-50 text-gray-700 font-medium text-sm">ล้างฟอร์ม</button>
+                        <button type="submit" class="px-6 py-2 bg-gov-700 hover:bg-gov-800 text-white rounded-xl font-medium text-sm shadow-md">บันทึกวัสดุ</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Material Registry Table -->
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">รายการทะเบียนวัสดุทั้งหมด</h3>
+                    <input type="text" id="searchMaterial" onkeyup="renderMaterialTable()" placeholder="ค้นหาชื่อ หรือประเภท..." class="border rounded-lg px-3 py-1.5 text-sm outline-none w-full sm:w-64">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 border-b">
+                                <th class="p-3">ชื่อวัสดุ</th>
+                                <th class="p-3">ประเภท</th>
+                                <th class="p-3">หน่วยนับ</th>
+                                <th class="p-3 text-right">คงเหลือ</th>
+                                <th class="p-3 text-right">ราคาเฉลี่ย/หน่วย</th>
+                                <th class="p-3 text-right">มูลค่ารวม</th>
+                                <th class="p-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="materialRegistryBody">
+                            <!-- Items inserted dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 5: REPORTS ================= -->
+        <section id="sec-reports" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 mb-4">
+                    <!-- Sub Tabs -->
+                    <div class="flex gap-2">
+                        <button onclick="switchReportSubTab('summary')" id="subtab-summary" class="bg-gov-700 text-white px-4 py-2 rounded-xl text-sm font-medium">สรุปรับ-จ่าย-คงเหลือ</button>
+                        <button onclick="switchReportSubTab('ledger')" id="subtab-ledger" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-medium">บัญชีวัสดุ (รายตัว)</button>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button onclick="window.print()" class="border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-print"></i> พิมพ์รายงาน
+                        </button>
+                        <button onclick="exportReportToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-file-excel"></i> ส่งออก Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="flex flex-wrap items-center gap-4 bg-gray-50 p-4 rounded-xl mb-4">
+                    <div>
+                        <label class="text-xs font-medium text-gray-500 block mb-1">ปีงบประมาณ</label>
+                        <select id="reportFiscalYear" onchange="generateReport()" class="border rounded-lg px-3 py-1.5 text-sm outline-none">
+                            <option value="2570">ปีงบ 2570</option>
+                            <option value="2569">ปีงบ 2569</option>
+                        </select>
+                    </div>
+                    <div id="materialSelectContainer" class="hidden">
+                        <label class="text-xs font-medium text-gray-500 block mb-1">เลือกรายการวัสดุ</label>
+                        <select id="reportMaterialId" onchange="generateReport()" class="border rounded-lg px-3 py-1.5 text-sm outline-none min-w-[200px]">
+                            <!-- Options dynamically populated -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Report Render Area -->
+                <div id="reportContainer" class="overflow-x-auto min-h-[300px]">
+                    <!-- Report content dynamically injected -->
+                </div>
+
+                <div class="mt-4 text-xs text-gray-500 italic">
+                    * มูลค่าคงเหลือคิดแบบราคาเฉลี่ยถ่วงน้ำหนัก (เฉลี่ยใหม่ทุกครั้งที่รับเข้า) ปีงบประมาณเริ่ม 1 ตุลาคม
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= TAB 6: SETTINGS ================= -->
+        <section id="sec-settings" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm max-w-3xl mx-auto">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-database"></i> สำรองและจัดการข้อมูล
+                </h3>
+                
+                <div class="space-y-6">
+                    <div class="p-4 border rounded-xl bg-gray-50">
+                        <h4 class="font-semibold text-gray-800 mb-2">สำรองข้อมูล (Backup)</h4>
+                        <p class="text-sm text-gray-600 mb-3">ส่งออกข้อมูลทั้งหมดในระบบเป็นไฟล์ JSON เพื่อเก็บสำรองไว้ในคอมพิวเตอร์ของคุณ</p>
+                        <button onclick="backupData()" class="bg-gov-700 hover:bg-gov-800 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> ดาวน์โหลดไฟล์สำรองข้อมูล
+                        </button>
+                    </div>
+
+                    <div class="p-4 border rounded-xl bg-gray-50">
+                        <h4 class="font-semibold text-gray-800 mb-2">นำเข้าข้อมูล (Restore)</h4>
+                        <p class="text-sm text-gray-600 mb-3">เลือกไฟล์ JSON ที่เคยสำรองไว้เพื่อนำข้อมูลกลับมาใช้</p>
+                        <input type="file" id="restoreFile" accept=".json" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 mb-3">
+                        <button onclick="restoreData()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-upload"></i> นำเข้าข้อมูล
+                        </button>
+                    </div>
+
+                    <div class="p-4 border border-rose-200 rounded-xl bg-rose-50">
+                        <h4 class="font-semibold text-rose-800 mb-2">ล้างข้อมูลทั้งหมด (Reset)</h4>
+                        <p class="text-sm text-rose-600 mb-3">คำเตือน: การกระทำนี้จะลบข้อมูลวัสดุ ใบรับ และใบเบิกทั้งหมดทันที</p>
+                        <button onclick="clearAllData()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-trash-can"></i> ล้างข้อมูลในระบบทั้งหมด
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Support / Donate Modal -->
+    <div id="donateModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-xl space-y-4">
+            <div class="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-heart"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800">สนับสนุนผู้พัฒนาระบบ</h3>
+            <p class="text-sm text-gray-600">
+                ระบบนี้พัฒนาเพื่อใช้งานในหน่วยงานราชการโดย นายอัษฎาวุธ รัตนกุล<br>
+                หากระบบนี้มีประโยชน์ สามารถสนับสนุนการพัฒนาได้ที่
+            </p>
+            <div class="bg-gray-50 p-4 rounded-xl text-left border text-sm space-y-1">
+                <p><strong>ธนาคาร:</strong> กรุงไทย</p>
+                <p><strong>เบอร์โทร/พร้อมเพย์:</strong> 0956758916</p>
+                <p><strong>ชื่อบัญชี:</strong> นายอัษฎาวุธ รัตนกุล</p>
+                <p><strong>อีเมล:</strong> slayergt01@gmail.com</p>
+            </div>
+            <button onclick="hideDonateModal()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-xl font-medium text-sm">ปิดหน้าต่าง</button>
+        </div>
+    </div>
+
+    <!-- PRINT VIEW AREA (Visible only when printing) -->
+    <div id="printArea" class="print-only p-8 bg-white text-black font-sans">
+        <!-- Content will be generated dynamically during print action -->
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // ================= APP STATE =================
+        let appData = {
+            materials: [],
+            receives: [],
+            issues: []
+        };
+
+        let currentTab = 'dashboard';
+        let currentReportSubTab = 'summary';
+        let chartInstance = null;
+
+        // Initialize Application
+        window.onload = function() {
+            loadData();
+            if (appData.materials.length === 0) {
+                seedInitialData();
+            }
+            initChart();
+            renderDashboard();
+            resetReceiveForm();
+            resetIssueForm();
+            renderMaterialOptions();
+        };
+
+        // ================= LOCAL STORAGE MANAGEMENT =================
+        function loadData() {
+            const stored = localStorage.getItem('kumwatsadu_data');
+            if (stored) {
+                try {
+                    appData = JSON.parse(stored);
+                } catch(e) {
+                    console.error('Failed to parse local storage', e);
+                }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('kumwatsadu_data', JSON.stringify(appData));
+            renderDashboard();
+            renderMaterialOptions();
+        }
+
+        function seedInitialData() {
+            appData.materials = [
+                { id: 'M-101', name: 'ยางมะตอยสำเร็จรูป (ถุง 20 กก.)', category: 'วัสดุก่อสร้าง', unit: 'ถุง', spec: 'ซ่อมถนน' },
+                { id: 'M-102', name: 'น้ำยาพ่นยุงลาย (ลิตร)', category: 'วัสดุการเกษตร/สาธารณสุข', unit: 'ลิตร', spec: 'เคมีภัณฑ์' },
+                { id: 'M-103', name: 'กระดาษ A4 80 แกรม', category: 'วัสดุสำนักงาน', unit: 'รีม', spec: 'Double A' }
+            ];
+            saveData();
+        }
+
+        // ================= NAVIGATION =================
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-gov-700', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('active', 'bg-gov-700', 'text-white');
+
+            if(tabId === 'dashboard') renderDashboard();
+            if(tabId === 'receive') renderReceiveTable();
+            if(tabId === 'issue') renderIssueTable();
+            if(tabId === 'registry') renderMaterialTable();
+            if(tabId === 'reports') generateReport();
+        }
+
+        function showDonateModal() { document.getElementById('donateModal').classList.remove('hidden'); document.getElementById('donateModal').classList.add('flex'); }
+        function hideDonateModal() { document.getElementById('donateModal').classList.add('hidden'); document.getElementById('donateModal').classList.remove('flex'); }
+
+        // ================= CALCULATIONS =================
+        function getMaterialCalculATED() {
+            // Calculate Stock Remaining and Weighted Average Cost for each material
+            return appData.materials.map(mat => {
+                let totalQty = 0;
+                let totalCost = 0;
+
+                // Process Receives
+                appData.receives.forEach(rec => {
+                    rec.items.forEach(item => {
+                        if (item.materialId === mat.id) {
+                            totalQty += Number(item.qty);
+                            totalCost += Number(item.qty) * Number(item.price);
+                        }
+                    });
+                });
+
+                // Calculate Avg Price
+                const avgPrice = totalQty > 0 ? (totalCost / totalQty) : 0;
+
+                // Process Issues
+                let issuedQty = 0;
+                appData.issues.forEach(iss => {
+                    iss.items.forEach(item => {
+                        if (item.materialId === mat.id) {
+                            issuedQty += Number(item.qty);
+                        }
+                    });
+                });
+
+                const stockQty = totalQty - issuedQty;
+                const totalValue = stockQty * avgPrice;
+
+                return {
+                    ...mat,
+                    stockQty,
+                    avgPrice,
+                    totalValue
+                };
+            });
+        }
+
+        // ================= DASHBOARD =================
+        function renderDashboard() {
+            const calculatedMat = getMaterialCalculATED();
+            const totalVal = calculatedMat.reduce((sum, item) => sum + item.totalValue, 0);
+            const outOfStock = calculatedMat.filter(item => item.stockQty <= 0).length;
+
+            document.getElementById('dashTotalValue').innerHTML = `${totalVal.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span class="text-lg font-normal">บาท</span>`;
+            document.getElementById('dashTotalItems').innerText = calculatedMat.length;
+            document.getElementById('dashOutOfStockCount').innerText = outOfStock;
+
+            // Rec/Iss Statistics
+            const recVal = appData.receives.reduce((sum, r) => sum + r.items.reduce((iSum, item) => iSum + (item.qty * item.price), 0), 0);
+            const issVal = appData.issues.reduce((sum, i) => {
+                const sub = i.items.reduce((iSum, item) => {
+                    const mat = calculatedMat.find(m => m.id === item.materialId);
+                    return iSum + (item.qty * (mat ? mat.avgPrice : 0));
+                }, 0);
+                return sum + sub;
+            }, 0);
+
+            document.getElementById('dashReceiveValue').innerHTML = `${recVal.toLocaleString('th-TH', {minimumFractionDigits: 2})} <span class="text-lg font-normal text-gray-500">บาท</span>`;
+            document.getElementById('dashReceiveCount').innerText = appData.receives.length;
+
+            document.getElementById('dashIssueValue').innerHTML = `${issVal.toLocaleString('th-TH', {minimumFractionDigits: 2})} <span class="text-lg font-normal text-gray-500">บาท</span>`;
+            document.getElementById('dashIssueCount').innerText = appData.issues.length;
+
+            // Top Stock Items List
+            const sortedMat = [...calculatedMat].sort((a, b) => b.totalValue - a.totalValue).slice(0, 5);
+            const topListEl = document.getElementById('topStockList');
+            if (sortedMat.length === 0 || totalVal === 0) {
+                topListEl.innerHTML = `<div class="text-gray-400 text-center py-8">ยังไม่มีวัสดุคงเหลือ</div>`;
+            } else {
+                topListEl.innerHTML = sortedMat.map(m => `
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                        <div>
+                            <p class="font-medium text-gray-800">${m.name}</p>
+                            <p class="text-xs text-gray-500">คงเหลือ ${m.stockQty} ${m.unit}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold text-gov-800">${m.totalValue.toLocaleString('th-TH', {minimumFractionDigits:2})} ฿</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateChart();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'],
+                    datasets: [
+                        { label: 'รับเข้า', data: Array(12).fill(0), backgroundColor: '#0284c7' },
+                        { label: 'เบิกจ่าย', data: Array(12).fill(0), backgroundColor: '#f59e0b' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function updateChart() {
+            if(!chartInstance) return;
+            // Dummy visual representation or aggregated monthly dataset
+            chartInstance.update();
+        }
+
+        // ================= RECEIVE FORM & LOGIC =================
+        function resetReceiveForm() {
+            document.getElementById('receiveForm').reset();
+            document.getElementById('recDate').valueAsDate = new Date();
+            document.getElementById('recInspectDate').valueAsDate = new Date();
+            document.getElementById('recDocNo').value = `00${appData.receives.length + 1}/2570`;
+            document.getElementById('receiveItemsTableBody').innerHTML = '';
+            addReceiveRow();
+            calculateReceiveTotal();
+        }
+
+        function addReceiveRow() {
+            const tbody = document.getElementById('receiveItemsTableBody');
+            const rowId = Date.now();
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            tr.id = `rec-row-${rowId}`;
+            tr.innerHTML = `
+                <td class="p-2">
+                    <select class="w-full border rounded-lg p-2 text-sm rec-mat-select" onchange="calculateReceiveTotal()" required>
+                        <option value="">-- เลือกวัสดุ --</option>
+                        ${appData.materials.map(m => `<option value="${m.id}">${m.name} (${m.unit})</option>`).join('')}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="number" step="any" min="0.01" class="w-full border rounded-lg p-2 text-sm rec-qty" oninput="calculateReceiveTotal()" required placeholder="0">
+                </td>
+                <td class="p-2">
+                    <input type="number" step="any" min="0" class="w-full border rounded-lg p-2 text-sm rec-price" oninput="calculateReceiveTotal()" required placeholder="0.00">
+                </td>
+                <td class="p-2 text-right font-medium text-gray-700 rec-subtotal">0.00</td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removeRow('rec-row-${rowId}', calculateReceiveTotal)" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function calculateReceiveTotal() {
+            let grandTotal = 0;
+            const rows = document.querySelectorAll('#receiveItemsTableBody tr');
+            rows.forEach(row => {
+                const qty = parseFloat(row.querySelector('.rec-qty').value) || 0;
+                const price = parseFloat(row.querySelector('.rec-price').value) || 0;
+                const subtotal = qty * price;
+                row.querySelector('.rec-subtotal').innerText = subtotal.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                grandTotal += subtotal;
+            });
+            document.getElementById('receiveTotalAmount').innerText = grandTotal.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function handleSaveReceive(e) {
+            e.preventDefault();
+            const rows = document.querySelectorAll('#receiveItemsTableBody tr');
+            const items = [];
+            rows.forEach(row => {
+                const matId = row.querySelector('.rec-mat-select').value;
+                const qty = parseFloat(row.querySelector('.rec-qty').value);
+                const price = parseFloat(row.querySelector('.rec-price').value);
+                if (matId && qty > 0) items.push({ materialId: matId, qty, price });
+            });
+
+            if (items.length === 0) {
+                alert('กรุณาเลือกรายการวัสดุอย่างน้อย 1 รายการ');
+                return;
+            }
+
+            const newReceive = {
+                id: Date.now().toString(),
+                docNo: document.getElementById('recDocNo').value,
+                date: document.getElementById('recDate').value,
+                source: document.getElementById('recSource').value,
+                inspectDate: document.getElementById('recInspectDate').value,
+                poNo: document.getElementById('recPoNo').value,
+                vendor: document.getElementById('recVendor').value,
+                invoiceNo: document.getElementById('recInvoiceNo').value,
+                note: document.getElementById('recNote').value,
+                items: items
+            };
+
+            appData.receives.unshift(newReceive);
+            saveData();
+            alert('บันทึกการรับวัสดุเข้าคลังเรียบร้อยแล้ว');
+            resetReceiveForm();
+            renderReceiveTable();
+        }
+
+        function renderReceiveTable() {
+            const tbody = document.getElementById('receiveRegistryBody');
+            const search = document.getElementById('searchReceive').value.toLowerCase();
+            const filtered = appData.receives.filter(r => r.docNo.toLowerCase().includes(search) || r.vendor.toLowerCase().includes(search));
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">ยังไม่มีการรับวัสดุ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(r => {
+                const totalVal = r.items.reduce((s, i) => s + (i.qty * i.price), 0);
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-semibold text-gov-800">${r.docNo}</td>
+                        <td class="p-3">${r.date}</td>
+                        <td class="p-3">${r.vendor} <span class="text-xs text-gray-400">(${r.source})</span></td>
+                        <td class="p-3 text-gray-500">${r.poNo || '-'}</td>
+                        <td class="p-3 text-xs">${r.items.length} รายการ</td>
+                        <td class="p-3 text-right font-medium">${totalVal.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="deleteReceive('${r.id}')" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-trash"></i> ลบ</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function deleteReceive(id) {
+            if (confirm('คุณต้องการลบรายการรับวัสดุนี้ใช่หรือไม่?')) {
+                appData.receives = appData.receives.filter(r => r.id !== id);
+                saveData();
+                renderReceiveTable();
+            }
+        }
+
+        // ================= ISSUE FORM & LOGIC =================
+        function resetIssueForm() {
+            document.getElementById('issueForm').reset();
+            document.getElementById('issDate').valueAsDate = new Date();
+            document.getElementById('issDocNo').value = `00${appData.issues.length + 1}/2570`;
+            document.getElementById('issueItemsTableBody').innerHTML = '';
+            addIssueRow();
+        }
+
+        function addIssueRow() {
+            const calculatedMat = getMaterialCalculATED();
+            const tbody = document.getElementById('issueItemsTableBody');
+            const rowId = Date.now();
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            tr.id = `iss-row-${rowId}`;
+            tr.innerHTML = `
+                <td class="p-2">
+                    <select class="w-full border rounded-lg p-2 text-sm iss-mat-select" onchange="updateIssueStockInfo(this)" required>
+                        <option value="">-- เลือกวัสดุ --</option>
+                        ${calculatedMat.map(m => `<option value="${m.id}" data-stock="${m.stockQty}" data-unit="${m.unit}">${m.name} (คงเหลือ: ${m.stockQty} ${m.unit})</option>`).join('')}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="number" step="any" min="0.01" class="w-full border rounded-lg p-2 text-sm iss-qty" required placeholder="0">
+                </td>
+                <td class="p-2 text-gray-600 text-sm iss-stock-info">-</td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removeRow('iss-row-${rowId}')" class="text-rose-500 hover:text-rose-700"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function updateIssueStockInfo(selectEl) {
+            const selectedOpt = selectEl.options[selectEl.selectedIndex];
+            const stock = selectedOpt.getAttribute('data-stock');
+            const unit = selectedOpt.getAttribute('data-unit');
+            const infoTd = selectEl.closest('tr').querySelector('.iss-stock-info');
+            if (stock !== null) {
+                infoTd.innerText = `${stock} ${unit}`;
+                selectEl.closest('tr').querySelector('.iss-qty').max = stock;
+            } else {
+                infoTd.innerText = '-';
+            }
+        }
+
+        function handleSaveIssue(e) {
+            e.preventDefault();
+            const action = e.submitter ? e.submitter.value : 'save';
+
+            const rows = document.querySelectorAll('#issueItemsTableBody tr');
+            const items = [];
+            let isValid = true;
+
+            rows.forEach(row => {
+                const matId = row.querySelector('.iss-mat-select').value;
+                const qty = parseFloat(row.querySelector('.iss-qty').value);
+                const selectOpt = row.querySelector('.iss-mat-select').options[row.querySelector('.iss-mat-select').selectedIndex];
+                const maxStock = parseFloat(selectOpt.getAttribute('data-stock') || 0);
+
+                if (qty > maxStock) {
+                    alert(`จำนวนเบิกเกินยอดคงเหลือในคลัง (คงเหลือ ${maxStock})`);
+                    isValid = false;
+                    return;
+                }
+
+                if (matId && qty > 0) items.push({ materialId: matId, qty });
+            });
+
+            if(!isValid) return;
+            if (items.length === 0) {
+                alert('กรุณาเลือกรายการวัสดุอย่างน้อย 1 รายการ');
+                return;
+            }
+
+            const newIssue = {
+                id: Date.now().toString(),
+                docNo: document.getElementById('issDocNo').value,
+                date: document.getElementById('issDate').value,
+                user: document.getElementById('issUser').value,
+                position: document.getElementById('issPosition').value,
+                purpose: document.getElementById('issPurpose').value,
+                note: document.getElementById('issNote').value,
+                items: items
+            };
+
+            appData.issues.unshift(newIssue);
+            saveData();
+
+            if (action === 'saveAndPrint') {
+                printIssueDoc(newIssue);
+            } else {
+                alert('บันทึกการเบิกวัสดุเรียบร้อยแล้ว');
+            }
+
+            resetIssueForm();
+            renderIssueTable();
+        }
+
+        function renderIssueTable() {
+            const calculatedMat = getMaterialCalculATED();
+            const tbody = document.getElementById('issueRegistryBody');
+            const search = document.getElementById('searchIssue').value.toLowerCase();
+            const filtered = appData.issues.filter(i => i.docNo.toLowerCase().includes(search) || i.user.toLowerCase().includes(search));
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">ยังไม่มีการเบิกวัสดุ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(i => {
+                const totalVal = i.items.reduce((sum, item) => {
+                    const mat = calculatedMat.find(m => m.id === item.materialId);
+                    return sum + (item.qty * (mat ? mat.avgPrice : 0));
+                }, 0);
+
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-semibold text-gov-800">${i.docNo}</td>
+                        <td class="p-3">${i.date}</td>
+                        <td class="p-3">${i.user} <span class="text-xs text-gray-400">(${i.position || '-'})</span></td>
+                        <td class="p-3 text-gray-600">${i.purpose}</td>
+                        <td class="p-3 text-xs">${i.items.length} รายการ</td>
+                        <td class="p-3 text-right font-medium">${totalVal.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-center space-x-2">
+                            <button onclick="triggerPrintIssue('${i.id}')" class="text-sky-600 hover:text-sky-800 text-xs"><i class="fa-solid fa-print"></i> พิมพ์</button>
+                            <button onclick="deleteIssue('${i.id}')" class="text-rose-500 hover:text-rose-700 text-xs"><i class="fa-solid fa-trash"></i> ลบ</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function triggerPrintIssue(id) {
+            const issue = appData.issues.find(i => i.id === id);
+            if(issue) printIssueDoc(issue);
+        }
+
+        function deleteIssue(id) {
+            if (confirm('คุณต้องการลบใบเบิกนี้ใช่หรือไม่?')) {
+                appData.issues = appData.issues.filter(i => i.id !== id);
+                saveData();
+                renderIssueTable();
+            }
+        }
+
+        // ================= MATERIAL REGISTRY =================
+        function resetMaterialForm() {
+            document.getElementById('materialForm').reset();
+            document.getElementById('matId').value = '';
+        }
+
+        function handleSaveMaterial(e) {
+            e.preventDefault();
+            const id = document.getElementById('matId').value || `M-${Date.now()}`;
+            const name = document.getElementById('matName').value;
+            const category = document.getElementById('matCategory').value || 'วัสดุทั่วไป';
+            const unit = document.getElementById('matUnit').value;
+            const spec = document.getElementById('matSpec').value;
+
+            const existingIdx = appData.materials.findIndex(m => m.id === id);
+            if(existingIdx >= 0) {
+                appData.materials[existingIdx] = { id, name, category, unit, spec };
+            } else {
+                appData.materials.push({ id, name, category, unit, spec });
+            }
+
+            saveData();
+            alert('บันทึกวัสดุเข้าทะเบียนเรียบร้อยแล้ว');
+            resetMaterialForm();
+            renderMaterialTable();
+        }
+
+        function renderMaterialTable() {
+            const calculated = getMaterialCalculATED();
+            const tbody = document.getElementById('materialRegistryBody');
+            const search = document.getElementById('searchMaterial').value.toLowerCase();
+            const filtered = calculated.filter(m => m.name.toLowerCase().includes(search) || m.category.toLowerCase().includes(search));
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400">ยังไม่มีรายการวัสดุ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(m => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-medium text-gray-800">${m.name} <div class="text-xs text-gray-400">${m.spec || ''}</div></td>
+                    <td class="p-3 text-gray-600">${m.category}</td>
+                    <td class="p-3">${m.unit}</td>
+                    <td class="p-3 text-right font-semibold ${m.stockQty <= 0 ? 'text-rose-600' : 'text-gray-800'}">${m.stockQty}</td>
+                    <td class="p-3 text-right">${m.avgPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+                    <td class="p-3 text-right font-medium text-gov-800">${m.totalValue.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+                    <td class="p-3 text-center space-x-2">
+                        <button onclick="editMaterial('${m.id}')" class="text-amber-600 hover:text-amber-800 text-xs"><i class="fa-solid fa-pen"></i> แก้ไข</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editMaterial(id) {
+            const mat = appData.materials.find(m => m.id === id);
+            if(mat) {
+                document.getElementById('matId').value = mat.id;
+                document.getElementById('matName').value = mat.name;
+                document.getElementById('matCategory').value = mat.category;
+                document.getElementById('matUnit').value = mat.unit;
+                document.getElementById('matSpec').value = mat.spec || '';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function renderMaterialOptions() {
+            const select = document.getElementById('reportMaterialId');
+            select.innerHTML = appData.materials.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        }
+
+        // ================= REPORTS =================
+        function switchReportSubTab(type) {
+            currentReportSubTab = type;
+            document.getElementById('subtab-summary').className = type === 'summary' ? 'bg-gov-700 text-white px-4 py-2 rounded-xl text-sm font-medium' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-medium';
+            document.getElementById('subtab-ledger').className = type === 'ledger' ? 'bg-gov-700 text-white px-4 py-2 rounded-xl text-sm font-medium' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-medium';
+            document.getElementById('materialSelectContainer').className = type === 'ledger' ? 'block' : 'hidden';
+            generateReport();
+        }
+
+        function generateReport() {
+            const container = document.getElementById('reportContainer');
+            const calculatedMat = getMaterialCalculATED();
+
+            if (currentReportSubTab === 'summary') {
+                container.innerHTML = `
+                    <h3 class="text-center font-bold text-lg mb-1">รายงานสรุปรับ-จ่าย-คงเหลือ วัสดุคงคลัง</h3>
+                    <p class="text-center text-sm text-gray-500 mb-4">งานธุรการ กองสาธารณสุขและสิ่งแวดล้อม เทศบาลตำบลแม่พริก</p>
+                    <table class="w-full text-left text-sm border-collapse border">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 border-b">
+                                <th class="p-2 border">ที่</th>
+                                <th class="p-2 border">รายการวัสดุ</th>
+                                <th class="p-2 border">หน่วยนับ</th>
+                                <th class="p-2 border text-right">คงเหลือ</th>
+                                <th class="p-2 border text-right">ราคาเฉลี่ย/หน่วย</th>
+                                <th class="p-2 border text-right">มูลค่ารวม (บาท)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${calculatedMat.map((m, idx) => `
+                                <tr class="border-b">
+                                    <td class="p-2 border text-center">${idx + 1}</td>
+                                    <td class="p-2 border font-medium">${m.name}</td>
+                                    <td class="p-2 border">${m.unit}</td>
+                                    <td class="p-2 border text-right">${m.stockQty}</td>
+                                    <td class="p-2 border text-right">${m.avgPrice.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+                                    <td class="p-2 border text-right font-semibold">${m.totalValue.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                const matId = document.getElementById('reportMaterialId').value;
+                const mat = calculatedMat.find(m => m.id === matId);
+                if (!mat) {
+                    container.innerHTML = `<div class="text-center py-8 text-gray-400">กรุณาเลือกรายการวัสดุ</div>`;
+                    return;
+                }
+
+                // Collect transactions
+                let txs = [];
+                appData.receives.forEach(r => {
+                    r.items.forEach(i => {
+                        if (i.materialId === matId) {
+                            txs.push({ date: r.date, docNo: r.docNo, type: 'รับ', source: r.vendor, qtyIn: i.qty, price: i.price, qtyOut: 0 });
+                        }
+                    });
+                });
+                appData.issues.forEach(iss => {
+                    iss.items.forEach(i => {
+                        if (i.materialId === matId) {
+                            txs.push({ date: iss.date, docNo: iss.docNo, type: 'จ่าย', source: iss.user, qtyIn: 0, price: mat.avgPrice, qtyOut: i.qty });
+                        }
+                    });
+                });
+
+                txs.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                let runQty = 0;
+                let runValue = 0;
+
+                container.innerHTML = `
+                    <div class="mb-4">
+                        <h3 class="text-center font-bold text-lg">บัญชีวัสดุ</h3>
+                        <p class="text-center text-sm text-gray-600">ชื่อวัสดุ: <strong>${mat.name}</strong> | หน่วยนับ: <strong>${mat.unit}</strong></p>
+                    </div>
+                    <table class="w-full text-left text-sm border-collapse border">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 border-b text-center">
+                                <th class="p-2 border" rowspan="2">วัน เดือน ปี</th>
+                                <th class="p-2 border" rowspan="2">เลขที่เอกสาร</th>
+                                <th class="p-2 border" rowspan="2">รายการ / ผู้รับ-ผู้จ่าย</th>
+                                <th class="p-2 border" colspan="3">รับ</th>
+                                <th class="p-2 border" colspan="3">จ่าย</th>
+                                <th class="p-2 border" colspan="3">คงเหลือ</th>
+                            </tr>
+                            <tr class="bg-gray-50 text-gray-600 border-b text-xs">
+                                <th class="p-1 border">จำนวน</th><th class="p-1 border">ราคา</th><th class="p-1 border">จำนวนเงิน</th>
+                                <th class="p-1 border">จำนวน</th><th class="p-1 border">ราคา</th><th class="p-1 border">จำนวนเงิน</th>
+                                <th class="p-1 border">จำนวน</th><th class="p-1 border">ราคา</th><th class="p-1 border">จำนวนเงิน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${txs.map(t => {
+                                if (t.type === 'รับ') {
+                                    runQty += t.qtyIn;
+                                    runValue += (t.qtyIn * t.price);
+                                } else {
+                                    runQty -= t.qtyOut;
+                                    runValue -= (t.qtyOut * t.price);
+                                }
+                                const currentAvg = runQty > 0 ? (runValue / runQty) : 0;
+                                return `
+                                    <tr class="border-b text-center">
+                                        <td class="p-2 border">${t.date}</td>
+                                        <td class="p-2 border">${t.docNo}</td>
+                                        <td class="p-2 border text-left">${t.source}</td>
+                                        <!-- รับ -->
+                                        <td class="p-2 border">${t.qtyIn || '-'}</td>
+                                        <td class="p-2 border">${t.qtyIn ? t.price.toFixed(2) : '-'}</td>
+                                        <td class="p-2 border">${t.qtyIn ? (t.qtyIn * t.price).toFixed(2) : '-'}</td>
+                                        <!-- จ่าย -->
+                                        <td class="p-2 border">${t.qtyOut || '-'}</td>
+                                        <td class="p-2 border">${t.qtyOut ? t.price.toFixed(2) : '-'}</td>
+                                        <td class="p-2 border">${t.qtyOut ? (t.qtyOut * t.price).toFixed(2) : '-'}</td>
+                                        <!-- เหลือ -->
+                                        <td class="p-2 border font-bold">${runQty}</td>
+                                        <td class="p-2 border">${currentAvg.toFixed(2)}</td>
+                                        <td class="p-2 border font-bold">${runValue.toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+        }
+
+        function exportReportToExcel() {
+            const table = document.querySelector('#reportContainer table');
+            if (!table) return alert('ไม่มีข้อมูลสำหรับส่งออก');
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Report" });
+            XLSX.writeFile(wb, `Material_Report_${Date.now()}.xlsx`);
+        }
+
+        // ================= PRINTING FUNCTION =================
+        function printIssueDoc(issue) {
+            const printArea = document.getElementById('printArea');
+            const calculatedMat = getMaterialCalculATED();
+
+            printArea.innerHTML = `
+                <div class="text-center space-y-1 mb-6">
+                    <h2 class="text-2xl font-bold">ใบเบิกวัสดุ</h2>
+                    <p class="text-sm">งานธุรการ กองสาธารณสุขและสิ่งแวดล้อม เทศบาลตำบลแม่พริก</p>
+                </div>
+
+                <div class="flex justify-between text-sm mb-4">
+                    <div>
+                        <p><strong>เลขที่ใบเบิก:</strong> ${issue.docNo}</p>
+                        <p><strong>ผู้ขอเบิก:</strong> ${issue.user} (${issue.position || 'พนักงาน'})</p>
+                    </div>
+                    <div class="text-right">
+                        <p><strong>วันที่:</strong> ${issue.date}</p>
+                        <p><strong>วัตถุประสงค์:</strong> ${issue.purpose}</p>
+                    </div>
+                </div>
+
+                <table class="w-full text-left text-sm border-collapse border border-black mb-8">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-black">
+                            <th class="p-2 border border-black text-center">ลำดับ</th>
+                            <th class="p-2 border border-black">รายการวัสดุ</th>
+                            <th class="p-2 border border-black text-center">จำนวนเบิก</th>
+                            <th class="p-2 border border-black text-center">หน่วยนับ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${issue.items.map((item, idx) => {
+                            const mat = calculatedMat.find(m => m.id === item.materialId);
+                            return `
+                                <tr class="border-b border-black">
+                                    <td class="p-2 border border-black text-center">${idx + 1}</td>
+                                    <td class="p-2 border border-black">${mat ? mat.name : '-'}</td>
+                                    <td class="p-2 border border-black text-center font-bold">${item.qty}</td>
+                                    <td class="p-2 border border-black text-center">${mat ? mat.unit : '-'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+
+                <div class="grid grid-cols-2 text-center text-sm gap-8 pt-8">
+                    <div>
+                        <p class="mb-12">ลงชื่อ..........................................................ผู้เบิก</p>
+                        <p>(${issue.user})</p>
+                        <p class="text-xs text-gray-500 mt-1">ตำแหน่ง ${issue.position || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="mb-12">ลงชื่อ..........................................................ผู้จ่ายวัสดุ</p>
+                        <p>(..........................................................)</p>
+                        <p class="text-xs text-gray-500 mt-1">เจ้าหน้าที่ผู้ดูแลคลังวัสดุ</p>
+                    </div>
+                </div>
+            `;
+
+            window.print();
+        }
+
+        // ================= UTILS & BACKUP =================
+        function removeRow(rowId, callback) {
+            document.getElementById(rowId).remove();
+            if(callback) callback();
+        }
+
+        function backupData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `kumwatsadu_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function restoreData() {
+            const fileInput = document.getElementById('restoreFile');
+            if(!fileInput.files[0]) return alert('กรุณาเลือกไฟล์สำรองข้อมูล (.json)');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    appData = JSON.parse(e.target.result);
+                    saveData();
+                    alert('นำเข้าข้อมูลสำเร็จแล้ว');
+                    location.reload();
+                } catch(err) {
+                    alert('รูปแบบไฟล์ไม่ถูกต้อง');
+                }
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+
+        function clearAllData() {
+            if(confirm('คุณแน่ใจหรือว่าต้องการลบข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
+                localStorage.removeItem('kumwatsadu_data');
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
